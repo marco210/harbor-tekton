@@ -6,7 +6,7 @@
 * argocd: v2.3.3
 
 ## Architecture
-<!image> 
+ ![Markdown](https://github.com/marco210/harbor-/tree/main/images/cicd-architecture.png)
 ## Installation
 ### Tekton
 1. Install tekton pipeline
@@ -132,13 +132,13 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
   ```
   kubectl -n argocd edit deployments.apps argocd-server
   ```
-  <!image edit argocd-server deployment>
+  ![Markdown](https://github.com/marco210/harbor-/tree/main/images/edit-argocd-server-dpl.png)
 
   * Change nginx ingress controller(add enable-ssl-passthrough)
   ```
   kubectl -n ingress-nginx edit deployments.apps  ingress-nginx-controller
   ```
-  <!image edit ingress controller>
+  ![Markdown](https://github.com/marco210/harbor-/tree/main/images/edit-ingress-controller.png)
   
   * Get password access UI
   `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo`
