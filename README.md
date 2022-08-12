@@ -19,104 +19,210 @@ curl -LO https://github.com/tektoncd/cli/releases/download/v0.22.0/tkn_0.22.0_Li
 sudo tar xvzf tkn_0.22.0_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
 ```
 3. Create Task
-* git-clone
-* golang-build
-* hadolint
-* kaniko
+* git-clone: clone repository to workspace
+```
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone-test
+spec:
+  params:
+  - name: repo
+    type: string
+    description: Git repository to be cloned
+    default: https://github.com/marco210/test9000
+  workspaces: # define workspace
+  - name: source
+  steps: # define steps for a task
+  - name: clone
+    image: alpine/git
+    workingDir: $(workspaces.source.path) # using workspace to store data.
+    command:
+      - /bin/sh
+      - -c
+      - git clone -v $(params.repo) .
+```
+* build-push-kaniko: build image from Dockerfile and push to pirvate registry
+```
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-push-kaniko-test
+spec:
+  params:
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: ./
+    - name: DESTINATION
+      description: The url of image to push
+      default: harbor.io/library/myapp:v1
+  workspaces:
+    - name: source
+  steps:
+    - name: build
+      image: gcr.io/kaniko-project/executor:debug
+      workingDir: $(workspaces.source.path) # using workspace.
+      command:
+        - /kaniko/executor
+      args: [
+            "--dockerfile=$(params.DOCKERFILE)",
+            "--context=$(params.CONTEXT)",
+            "--insecure=true",
+            "--skip-tls-verify=true",
+            "--destination=$(params.DESTINATION)",
+            ]
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: regcred
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+```
+* cleanup: Clean up your persistent data
+```
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+ name: cleanup
+spec:
+  workspaces:
+  - name: source
+  steps:
+  - name: remove-source
+    image: registry.access.redhat.com/ubi8/ubi
+    command:
+    - /bin/bash
+    args:
+    - "-c"
+    - "rm -rf $(workspaces.source.path)/* && rm -rf $(workspaces.source.path)/.git"
+```
 4. Create Pipeline
 ```
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: golang-pipeline
+  name: clone-and-list-test
 spec:
   params:
-  - name: git_url
-    default: https://github.com/marco210/Hello9000
+  - name: git_repo
+    default: https://github.com/marco210/test9000.git
     type: string
-  - name: imageUrl
-    default: marco210/pipedemo
-    type: string
-  - name: imageTag
-    default: last
+  - name: image_url
     type: string
   workspaces:
-    - name: kubegen-ws
-    - name: docker-reg-creds
+    - name: codebase
   tasks:
-  - name: git-clone
+    - name: clone
+      taskRef:
+        name: git-clone-test
+      workspaces:
+      - name: source
+        workspace: codebase
+      params:
+      - name: repo
+        value: $(params.git_repo)
+    - name: build-push
+      taskRef:
+        name: build-push-kaniko-test
+      workspaces:
+      - name: source
+        workspace: codebase
+      params:
+      - name: DESTINATION
+        value: $(params.image_url)
+      runAfter:
+      - clone
+  finally: # should be clean up folder for second run
+  - name: clean
     taskRef:
-      name: git-clone
-    workspaces:
-    - name: output
-      workspace: kubegen-ws
-    params:
-    - name: url
-      value: $(params.git_url)
-  - name: build-go-app
-    taskRef:
-      name: golang-build
-    workspaces:
-    - name: source
-      workspace: kubegen-ws
-    params:
-    - name: package
-      value: github.com/marco210/Hello9000
-    runAfter:
-    - git-clone
-  - name: dockerfile-lint
-    taskRef:
-      name: hadolint
-    workspaces:
-    - name: source
-      workspace: kubegen-ws
-    runAfter:
-    - git-clone
-  - name: build-and-push
-    taskRef:
-      name: kaniko
+      name: cleanup
     workspaces:
     - name: source
-      workspace: kubegen-ws
-    - name: dockerconfig
-      workspace: docker-reg-creds
-    params:
-    - name: IMAGE
-      value: $(params.imageUrl):$(params.imageTag)
-    runAfter:
-    - dockerfile-lint
+      workspace: codebase
 ```
 5. Create Pipeline Run
 ```
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  creationTimestamp: null
-  generateName: golang-pipeline-run-
-  namespace: default
+  generateName: demo-pipeline-run-
 spec:
   params:
   - name: git_url
-    value: https://github.com/marco210/Hello9000
-  - name: imageTag
-    value: v4
-  - name: imageUrl
-    value: marco210/pipedemo
+    value: https://github.com/marco210/test9000.git
+  - name: image_url
+    value: harbor.io/library/myapp:v2
   pipelineRef:
-    name: golang-pipeline  
+    name: clone-and-list-test
   workspaces:
-  - name: kubegen-ws
+  - name: codebase
     persistentVolumeClaim:
       claimName: tekton-pvc
-  - name: docker-reg-creds
-    secret:
-      secretName: docker-creds
-status: {}
 ```
 6. Secret reference
-* Secret `docker-creds`
+* Secret `regcred`
 ```
-abc
+# harbor secret crendential
+# kubectl create secret docker-registry regcred --docker-server=https://harbor.io --docker-username=admin --docker-password=Harbor12345 --docker-email=admin@harbor.io --dry-run=client -oyaml
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJodHRwczovL2hhcmJvci5pbyI6eyJ1c2VybmFtZSI6ImFkbWluIiwicGFzc3dvcmQiOiJIYXJib3IxMjM0NSIsImVtYWlsIjoiYWRtaW5AaGFyYm9yLmlvIiwiYXV0aCI6IllXUnRhVzQ2U0dGeVltOXlNVEl6TkRVPSJ9fX0=
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: regcred
+type: kubernetes.io/dockerconfigjson
+```
+7. PV,PVC reference
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: tekton
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tekton
+spec:
+  storageClassName: harbor
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  local:
+    path: /home/hadn/tekton-kaniko-build
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/os
+          operator: In
+          values:
+          - linux
+  persistentVolumeReclaimPolicy: Delete
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tekton-pvc
+spec:
+  storageClassName: harbor
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 ```
 
 ## ArgoCD
@@ -151,11 +257,11 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
     name: argocd-server-ingress
     namespace: argocd
     annotations:
-      kubernetes.io/ingress.class: nginx
       nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
       nginx.ingress.kubernetes.io/ssl-passthrough: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
   spec:
+    ingressClassName: nginx
     rules:
     - host: argocd.example.com
       http:
