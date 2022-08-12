@@ -1,3 +1,11 @@
+# Harbor
+Install harbor using Helm
+```
+#install
+helm install --wait harbor -n harbor harbor/harbor --version v1.9.0  -f harbor-values.yaml
+# Upgrade
+helm upgrade -n harbor harbor harbor/harbor  --version v1.9.0 -f new-harbor-values.yaml
+```
 # Tekton + ArgoCD
 
 ## Software
