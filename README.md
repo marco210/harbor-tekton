@@ -346,9 +346,9 @@ spec:
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
-    automated:
-      selfHeal: true
-      prune: true
+    automated:  # automated sync by default retries failed attempts 5 times with following delays between attempts ( 5s, 10s, 20s, 40s, 80s ); retry controlled using `retry` field.
+      selfHeal: true # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
+      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
 ```
 
 * If application manifests are located in private repository then repository credentials have to be configured. Argo CD supports both HTTP and SSH Git credentials.
