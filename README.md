@@ -351,3 +351,6 @@ argocd repo add https://github.com/argoproj/argocd-example-apps --username <user
 - Using UI: 
 Navigate to `Settings/Repositories`. Add informations of repository: `URL`, `username`, `password`
 
+# References
+1. https://gist.github.com/alochym01/d104b84aa3e5316682f09185efc8a442
+2. techworldwithnana ArgoCD Tutorial for Beginners | GitOps CD for Kubernetes
