@@ -342,3 +342,12 @@ spec:
       selfHeal: true
       prune: true
 ```
+
+* If application manifests are located in private repository then repository credentials have to be configured. Argo CD supports both HTTP and SSH Git credentials.
+- Using argocd CLI: 
+```
+argocd repo add https://github.com/argoproj/argocd-example-apps --username <username> --password <password>
+```
+- Using UI: 
+Navigate to `Settings/Repositories`. Add informations of repository: `URL`, `username`, `password`
+
