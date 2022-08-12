@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone-test
+spec:
+  params:
+  - name: repo
+    type: string
+    description: Git repository to be cloned
+    default: https://github.com/marco210/test9000
+  workspaces: # define workspace
+  - name: source
+  steps: # define steps for a task
+  - name: clone
+    image: alpine/git
+    workingDir: $(workspaces.source.path) # using workspace to store data.
+    command:
+      - /bin/sh
+      - -c
+      - git clone -v $(params.repo) .
