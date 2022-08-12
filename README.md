@@ -14,7 +14,7 @@ helm upgrade -n harbor harbor harbor/harbor  --version v1.9.0 -f new-harbor-valu
 * argocd: v2.3.3
 
 ## Architecture
-![Markdown](https://github.com/marco210/harbor-/tree/main/images/new-cicd-architecture.png)
+![Architecture](./images/new-cicd-architecture.png)
 ## Installation
 ### Tekton
 1. Install tekton pipeline
@@ -291,13 +291,13 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
   ```
   kubectl -n argocd edit deployments.apps argocd-server
   ```
-  ![Markdown](https://github.com/marco210/harbor-/tree/main/images/edit-argocd-server-dpl.png)
+  ![Markdown](./images/edit-argocd-server-dpl.png)
 
   * Change nginx ingress controller(add enable-ssl-passthrough)
   ```
   kubectl -n ingress-nginx edit deployments.apps  ingress-nginx-controller
   ```
-  ![Markdown](https://github.com/marco210/harbor-/tree/main/images/edit-ingress-controller.png)
+  ![Markdown](./images/edit-ingress-controller.png)
   
   * Get password access UI
   `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo`
