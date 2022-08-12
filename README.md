@@ -6,7 +6,7 @@
 * argocd: v2.3.3
 
 ## Architecture
- ![Markdown](https://github.com/marco210/harbor-/tree/main/images/cicd-architecture.png)
+![Markdown](https://github.com/marco210/harbor-/tree/main/images/new-cicd-architecture.png)
 ## Installation
 ### Tekton
 1. Install tekton pipeline
@@ -154,6 +154,51 @@ kind: PipelineRun
 metadata:
   generateName: demo-pipeline-run-
 spec:
+  params:
+  - name: git_url
+    value: https://github.com/marco210/test9000.git
+  - name: image_url
+    value: harbor.io/library/myapp:v2
+  pipelineRef:
+    name: clone-and-list-test
+  workspaces:
+  - name: codebase
+    persistentVolumeClaim:
+      claimName: tekton-pvc
+```
+With private repo in github, to clone we need credentials. Here, using basic authen
+`Secret credentials`
+```
+# secret basic-user-pass
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-user-pass
+  annotations:
+    tekton.dev/git-0: https://github.com # Described below
+type: kubernetes.io/basic-auth
+stringData:
+  username: marco210
+  password: ghp_github-token
+```
+`ServiceAccount`
+```
+cat sa-git.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-bot
+secrets:
+  - name: basic-user-pass
+```
+`PipelineRun` with private repository
+```
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: demo-pipeline-run-
+spec:
+  serviceAccountName: build-bot
   params:
   - name: git_url
     value: https://github.com/marco210/test9000.git
