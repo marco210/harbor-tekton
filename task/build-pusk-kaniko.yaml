@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-push-kaniko-test
+spec:
+  params:
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: The build context used by Kaniko.
+      default: ./
+    - name: DESTINATION
+      description: The url of image to push
+      default: harbor.io/library/myapp:v1
+  workspaces:
+    - name: source
+  steps:
+    - name: build
+      image: gcr.io/kaniko-project/executor:debug
+      workingDir: $(workspaces.source.path) # using workspace.
+      command:
+        - /kaniko/executor
+      args: [
+            "--dockerfile=$(params.DOCKERFILE)",
+            "--context=$(params.CONTEXT)",
+            "--insecure=true",
+            "--skip-tls-verify=true",
+            "--destination=$(params.DESTINATION)",
+            ]
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: regcred
+        items:
+          - key: .dockerconfigjson
+            path: config.json
