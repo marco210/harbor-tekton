@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: clone-and-list-test
+spec:
+  params:
+  - name: git_repo
+    default: https://github.com/marco210/test9000.git
+    type: string
+  - name: image_url
+    type: string
+  workspaces:
+    - name: codebase
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone-test
+      workspaces:
+      - name: source
+        workspace: codebase
+      params:
+      - name: repo
+        value: $(params.git_repo)
+    - name: build-push
+      taskRef:
+        name: build-push-kaniko-test
+      workspaces:
+      - name: source
+        workspace: codebase
+      params:
+      - name: DESTINATION
+        value: $(params.image_url)
+      runAfter:
+      - clone
+  finally: # should be clean up folder for second run
+  - name: clean
+    taskRef:
+      name: cleanup
+    workspaces:
+    - name: source
+      workspace: codebase
