@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: demo-pipeline-run-
+spec:
+  params:
+  - name: git_url
+    value: https://github.com/marco210/test9000.git
+  - name: image_url
+    value: harbor.io/library/myapp:v2
+  pipelineRef:
+    name: clone-and-list-test
+  workspaces:
+  - name: codebase
+    persistentVolumeClaim:
+      claimName: tekton-pvc
